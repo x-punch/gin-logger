@@ -1,2 +1,10 @@
 # gin-logger
-Gin middleware/handler to logger url path, which support filter http status code.
+Gin middleware used to logger url request, which support advanced filter.
+
+# Usage
+```
+app.Use(logger.DefaultLogger())
+```
+```
+app.Use(logger.Logger(logger.Config{Level: "WARN", SkipMethods: []string{"OPTIONS"}, SkipURLs: []string{"/test"}, SkipURLRegexp: regexp.MustCompile("/swagger/*")}))
+```
