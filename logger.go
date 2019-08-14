@@ -8,12 +8,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // Config represents logger configuration.
 type Config struct {
 	Level         string
+	Development   bool
 	SkipMethods   []string
 	SkipURLs      []string
 	SkipURLRegexp *regexp.Regexp
@@ -21,39 +21,24 @@ type Config struct {
 
 // DefaultLogger represents default gin logger
 func DefaultLogger() gin.HandlerFunc {
-	return Logger(Config{Level: "DEBUG"})
+	return Logger(Config{Level: "INFO", Development: true})
 }
 
 // Logger initializes the logging middleware.
-func Logger(config Config) gin.HandlerFunc {
-	var level = zapcore.DebugLevel
-	if len(config.Level) > 0 {
-		if err := level.Set(config.Level); err != nil {
-			panic(err)
-		}
-	}
-	logger, _ := zap.Config{
-		Level:             zap.NewAtomicLevelAt(level),
-		DisableCaller:     true,
-		DisableStacktrace: true,
-		Development:       false,
-		Encoding:          "console",
-		EncoderConfig:     zap.NewDevelopmentEncoderConfig(),
-		OutputPaths:       []string{"stderr"},
-		ErrorOutputPaths:  []string{"stderr"},
-	}.Build()
+func Logger(cfg Config) gin.HandlerFunc {
+	logger, _ := NewZapConfig(cfg).Build()
 
 	var skipURLs map[string]struct{}
-	if length := len(config.SkipURLs); length > 0 {
+	if length := len(cfg.SkipURLs); length > 0 {
 		skipURLs = make(map[string]struct{}, length)
-		for _, u := range config.SkipURLs {
+		for _, u := range cfg.SkipURLs {
 			skipURLs[u] = struct{}{}
 		}
 	}
 	var skipMethods map[string]struct{}
-	if length := len(config.SkipMethods); length > 0 {
+	if length := len(cfg.SkipMethods); length > 0 {
 		skipMethods = make(map[string]struct{}, length)
-		for _, m := range config.SkipMethods {
+		for _, m := range cfg.SkipMethods {
 			skipMethods[m] = struct{}{}
 		}
 	}
@@ -78,7 +63,7 @@ func Logger(config Config) gin.HandlerFunc {
 		if _, ok := skipURLs[url]; ok {
 			return
 		}
-		if config.SkipURLRegexp != nil && config.SkipURLRegexp.MatchString(url) {
+		if cfg.SkipURLRegexp != nil && cfg.SkipURLRegexp.MatchString(url) {
 			return
 		}
 
@@ -91,9 +76,9 @@ func Logger(config Config) gin.HandlerFunc {
 			zap.Int("s", c.Writer.Status()),
 			zap.String("m", c.Request.Method),
 			zap.String("p", path),
-			zap.String("i", c.ClientIP()),
+			zap.String("ip", c.ClientIP()),
 			zap.Duration("l", time.Now().Sub(start)),
-			// zap.String("ua", c.Request.UserAgent())
+			zap.String("ua", c.Request.UserAgent()),
 		}
 		switch {
 		case c.Writer.Status() >= http.StatusBadRequest && c.Writer.Status() < http.StatusInternalServerError:
