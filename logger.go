@@ -46,13 +46,9 @@ func Logger(cfg Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		path := c.Request.URL.Path
-		if len(c.Request.URL.RawQuery) > 0 {
-			path = c.Request.URL.Path + "?" + c.Request.URL.RawQuery
-		}
 		url := c.Request.URL.EscapedPath()
 		for _, p := range c.Params {
-			url = strings.Replace(path, p.Value, ":"+p.Key, 1)
+			url = strings.Replace(url, p.Value, ":"+p.Key, 1)
 		}
 
 		c.Next()
@@ -75,7 +71,7 @@ func Logger(cfg Config) gin.HandlerFunc {
 		fields := []zap.Field{
 			zap.Int("s", c.Writer.Status()),
 			zap.String("m", c.Request.Method),
-			zap.String("p", path),
+			zap.String("p", url),
 			zap.String("ip", c.ClientIP()),
 			zap.Duration("l", time.Now().Sub(start)),
 			zap.String("ua", c.Request.UserAgent()),
